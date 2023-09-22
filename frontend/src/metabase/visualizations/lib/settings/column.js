@@ -511,13 +511,10 @@ export const buildTableColumnSettings = ({
     // it will be treated as "all columns are hidden",
     // This check ensures it's not empty,
     // otherwise it will be overwritten by `getDefault` below
-    return (
-      columns.length !== 0 &&
-      _.all(
-        enabledColumns,
-        columnSetting =>
-          findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
-      )
+    return _.all(
+      enabledColumns,
+      columnSetting =>
+        findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
     );
   };
 
