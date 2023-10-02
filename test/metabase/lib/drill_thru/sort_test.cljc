@@ -15,8 +15,9 @@
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))
         drill (lib.drill-thru.sort/sort-drill query
                                               -1
-                                              {:column (meta/field-metadata :orders :id)
-                                               :value  nil})]
+                                              {:column     (meta/field-metadata :orders :id)
+                                               :column-ref (lib/ref (meta/field-metadata :orders :id))
+                                               :value      nil})]
     (is (=? {:type            :drill-thru/sort
              :column          {:id (meta/id :orders :id)}
              :sort-directions [:asc :desc]}

@@ -55,7 +55,8 @@
   Once we're using MLv2 queries everywhere and stop converting back to legacy we should be able to remove this ICKY
   HACK."
   [query stage-number {{:keys [aggregation-index], :as column} :column, :as context}]
-  (or (when (and aggregation-index
+  (throw (ex-info "icky hack still used" {}))
+  #_(or (when (and aggregation-index
                  (not (:lib/source-uuid column)))
         (when-let [ag (lib.aggregation/aggregation-at-index query stage-number aggregation-index)]
           (assoc-in context [:column :lib/source-uuid] (lib.options/uuid ag))))
@@ -75,7 +76,7 @@
    #'lib.drill-thru.underlying-records/underlying-records-drill
    #'lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill])
 
-(mu/defn ^:private all-contexts :- [:sequential {:min 1} ::lib.schema.drill-thru/context]
+#_(mu/defn ^:private all-contexts :- [:sequential {:min 1} ::lib.schema.drill-thru/context]
   [query                             :- ::lib.schema/query
    stage-number                      :- :int
    {:keys [dimensions], :as context} :- ::lib.schema.drill-thru/context]
@@ -103,12 +104,7 @@
     stage-number :- :int
     context      :- ::lib.schema.drill-thru/context]
    (try
-     (into []
-           (mapcat (fn [context]
-                     (let [context (icky-hack-add-source-uuid-to-aggregation-column-metadata query stage-number context)]
-                       (keep #(% query stage-number context)
-                             available-drill-thru-fns))))
-           (all-contexts query stage-number context))
+     (keep #(% query stage-number context) available-drill-thru-fns)
      (catch #?(:clj Throwable :cljs :default) e
        (throw (ex-info (str "Error getting available drill thrus for query: " (ex-message e))
                        {:query        query
