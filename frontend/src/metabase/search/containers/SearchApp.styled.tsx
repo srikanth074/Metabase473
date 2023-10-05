@@ -17,6 +17,8 @@ export const SearchMain = styled(Flex)`
 `;
 
 export const SearchBody = styled(Flex)`
+  gap: ${({theme}) => theme.spacing.md};
+
   ${breakpointMinMedium} {
     flex-direction: row-reverse;
     gap: 2.5rem;

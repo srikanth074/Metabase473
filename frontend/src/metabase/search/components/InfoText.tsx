@@ -1,78 +1,58 @@
-import { t, jt } from "ttag";
-
-import * as Urls from "metabase/lib/urls";
-
-import { Icon } from "metabase/core/components/Icon";
-import Link from "metabase/core/components/Link";
-
-import Schema from "metabase/entities/schemas";
-import Database from "metabase/entities/databases";
-import Table from "metabase/entities/tables";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import { getTranslatedEntityName } from "metabase/common/utils/model-names";
-
-import type { Collection } from "metabase-types/api";
-import type { WrappedResult } from "metabase/search/types";
 import type TableType from "metabase-lib/metadata/Table";
 
-import { CollectionBadge } from "./CollectionBadge";
+import type { Collection } from "metabase-types/api";
+
+import { Icon } from "metabase/core/components/Icon";
+import Database from "metabase/entities/databases";
+
+import Schema from "metabase/entities/schemas";
+import Table from "metabase/entities/tables";
+
+import * as Urls from "metabase/lib/urls";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { AuthorityLevelIcon } from "metabase/search/components/CollectionBadge.styled";
+import { SearchResultLink } from "metabase/search/components/SearchResultLink/SearchResultLink";
+import type { WrappedResult } from "metabase/search/types";
+import { jt, t } from "ttag";
+
+const getCollectionResultLink = (result: WrappedResult) => {
+  const collection = result.getCollection();
+  return (
+    <SearchResultLink
+      leftIcon={<AuthorityLevelIcon collection={collection} />}
+      to={Urls.collection(collection)}
+    >
+      {collection.name}
+    </SearchResultLink>
+  );
+};
 
 export function InfoText({ result }: { result: WrappedResult }) {
-  let textContent: string | string[] | JSX.Element;
+  let textContent: string | string[] | JSX.Element | null;
 
   switch (result.model) {
     case "card":
-      textContent = jt`Saved question in ${formatCollection(
-        result,
-        result.getCollection(),
-      )}`;
-      break;
     case "dataset":
-      textContent = jt`Model in ${formatCollection(
-        result,
-        result.getCollection(),
-      )}`;
-      break;
+    case "indexed-entity":
+    default:
+      return getCollectionResultLink(result);
+    case "table":
+      return <TablePath result={result} />;
+    case "segment":
+    case "metric":
+      return <TableLink result={result} />;
     case "collection":
       textContent = getCollectionInfoText(result.collection);
       break;
     case "database":
       textContent = t`Database`;
       break;
-    case "table":
-      textContent = <TablePath result={result} />;
-      break;
-    case "segment":
-      textContent = jt`Segment of ${(<TableLink result={result} />)}`;
-      break;
-    case "metric":
-      textContent = jt`Metric for ${(<TableLink result={result} />)}`;
-      break;
     case "action":
-      textContent = jt`for ${result.model_name}`;
-      break;
-    case "indexed-entity":
-      textContent = jt`in ${result.model_name}`;
-      break;
-    default:
-      textContent = jt`${getTranslatedEntityName(
-        result.model,
-      )} in ${formatCollection(result, result.getCollection())}`;
+      textContent = result.model_name;
       break;
   }
 
-  return <>{textContent}</>;
-}
-
-function formatCollection(
-  result: WrappedResult,
-  collection: Partial<Collection>,
-) {
-  return (
-    collection.id && (
-      <CollectionBadge key={result.model} collection={collection} />
-    )
-  );
+  return <SearchResultLink>{textContent}</SearchResultLink>;
 }
 
 function getCollectionInfoText(collection: Partial<Collection>) {
@@ -89,9 +69,12 @@ function getCollectionInfoText(collection: Partial<Collection>) {
 function TablePath({ result }: { result: WrappedResult }) {
   return (
     <>
-      {jt`Table in ${(
-        <span key="table-path">
-          <Database.Link id={result.database_id} />{" "}
+      {jt`${(
+        <>
+          <Database.Link
+            LinkComponent={SearchResultLink}
+            id={result.database_id}
+          />{" "}
           {result.table_schema && (
             <Schema.ListLoader
               query={{ dbId: result.database_id }}
@@ -99,23 +82,20 @@ function TablePath({ result }: { result: WrappedResult }) {
             >
               {({ list }: { list: typeof Schema[] }) =>
                 list?.length > 1 ? (
-                  <span>
-                    <Icon name="chevronright" size={10} />
-                    {/* we have to do some {} manipulation here to make this look like the table object that browseSchema was written for originally */}
-                    <Link
-                      to={Urls.browseSchema({
-                        db: { id: result.database_id },
-                        schema_name: result.table_schema,
-                      } as TableType)}
-                    >
-                      {result.table_schema}
-                    </Link>
-                  </span>
+                  <SearchResultLink
+                    leftIcon={<Icon name="chevronright" size={10} />}
+                    to={Urls.browseSchema({
+                      db: { id: result.database_id },
+                      schema_name: result.table_schema,
+                    } as TableType)}
+                  >
+                    {result.table_schema}
+                  </SearchResultLink>
                 ) : null
               }
             </Schema.ListLoader>
           )}
-        </span>
+        </>
       )}`}
     </>
   );
@@ -123,12 +103,14 @@ function TablePath({ result }: { result: WrappedResult }) {
 
 function TableLink({ result }: { result: WrappedResult }) {
   return (
-    <Link to={Urls.tableRowsQuery(result.database_id, result.table_id)}>
+    <SearchResultLink
+      to={Urls.tableRowsQuery(result.database_id, result.table_id)}
+    >
       <Table.Loader id={result.table_id} loadingAndErrorWrapper={false}>
         {({ table }: { table: TableType }) =>
           table ? <span>{table.display_name}</span> : null
         }
       </Table.Loader>
-    </Link>
+    </SearchResultLink>
   );
 }

@@ -7,9 +7,8 @@ import _ from "underscore";
 import { push } from "react-router-redux";
 import Search from "metabase/entities/search";
 
-import Card from "metabase/components/Card";
 import EmptyState from "metabase/components/EmptyState";
-import { Box, Text, Group, Paper } from "metabase/ui";
+import { Box, Text, Group, Paper, Stack } from "metabase/ui";
 
 import NoResults from "assets/img/no_results.svg";
 import PaginationControls from "metabase/components/PaginationControls";
@@ -100,7 +99,10 @@ function SearchApp({ location }) {
                 </Paper>
               ) : (
                 <Box>
-                  <SearchResultSection items={list} />
+                  <SearchResultSection
+                    items={list}
+                    totalResults={metadata.total}
+                  />
                   <Group justify="flex-end" align="center" my="1rem">
                     <PaginationControls
                       showTotal
@@ -128,14 +130,18 @@ SearchApp.propTypes = {
 
 export default SearchApp;
 
-const SearchResultSection = ({ items }) => (
-  <Card className="pt2">
-    {items.map(item => {
-      return <SearchResult key={`${item.id}__${item.model}`} result={item} />;
-    })}
-  </Card>
+const SearchResultSection = ({ items, totalResults }) => (
+  <Paper p="md">
+    <Text mb="sm" ml="xs" tt="uppercase" c="text.1" fw="700">{t`${totalResults} results`}</Text>
+    <Stack spacing="xs" justify="center" align="center">
+      {items.map(item => (
+        <SearchResult key={item.id} result={item} />
+      ))}
+    </Stack>
+  </Paper>
 );
 
 SearchResultSection.propTypes = {
   items: PropTypes.array,
+  totalResults: PropTypes.number
 };

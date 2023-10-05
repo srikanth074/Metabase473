@@ -1,115 +1,42 @@
-import { Button } from "metabase/ui";
+import { Divider } from "@mantine/core";
 import { color } from "metabase/lib/colors";
+import moment from "moment";
 import { isSyncCompleted } from "metabase/lib/syncing";
-import { Icon } from "metabase/core/components/Icon";
-import Text from "metabase/components/type/Text";
 
-import { PLUGIN_COLLECTIONS, PLUGIN_MODERATION } from "metabase/plugins";
-
-import type { SearchScore, SearchModelType } from "metabase-types/api";
+import { ItemIcon } from "metabase/search/components/SearchResult/ItemIcon";
 
 import type { WrappedResult } from "metabase/search/types";
-import Link from "metabase/core/components/Link/Link";
-import { InfoText } from "../InfoText";
+import * as UI from "metabase/ui";
 import {
-  IconWrapper,
-  ResultButton,
-  ResultLink,
-  Title,
-  TitleWrapper,
-  Description,
-  ContextText,
-  ContextContainer,
-  ResultSpinner,
-  ResultLinkContent,
-  ResultInner,
+  ModerationIcon,
+  SearchResultContainer,
+  SearchResultParentLink,
+  TitleText,
 } from "./SearchResult.styled";
 
-const DEFAULT_ICON_SIZE = 20;
-
-function TableIcon() {
-  return <Icon name="database" />;
-}
-
-function CollectionIcon({ item }: { item: WrappedResult }) {
-  const iconProps = { ...item.getIcon() };
-  const isRegular = PLUGIN_COLLECTIONS.isRegularCollection(item.collection);
-  if (isRegular) {
-    iconProps.size = DEFAULT_ICON_SIZE;
-  } else {
-    iconProps.width = 20;
-    iconProps.height = 24;
-  }
-  return <Icon {...iconProps} tooltip={null} />;
-}
-
-const ModelIconComponentMap = {
-  table: TableIcon,
-  collection: CollectionIcon,
-};
-
-function DefaultIcon({ item }: { item: WrappedResult }) {
-  return <Icon {...item.getIcon()} size={DEFAULT_ICON_SIZE} />;
-}
-
-export function ItemIcon({
-  item,
-  type,
-  active,
-}: {
-  item: WrappedResult;
-  type: SearchModelType;
-  active: boolean;
-}) {
-  const IconComponent =
-    type in Object.keys(ModelIconComponentMap)
-      ? ModelIconComponentMap[type as keyof typeof ModelIconComponentMap]
-      : DefaultIcon;
-
-  return (
-    <IconWrapper item={item} type={type} active={active}>
-      <IconComponent item={item} />
-    </IconWrapper>
-  );
-}
-
-function Score({ scores }: { scores: SearchScore[] }) {
-  return (
-    <pre className="hide search-score">{JSON.stringify(scores, null, 2)}</pre>
-  );
-}
-
-// I think it's very likely that this is a dead codepath: RL 2023-06-21
-function Context({ context }: { context: any[] }) {
-  if (!context) {
+const formatDate = (inputDate?: string | null) => {
+  if (!inputDate) {
     return null;
   }
+  const date = moment(inputDate);
+  const today = moment().startOf("day");
+  const yesterday = moment().subtract(1, "days").startOf("day");
+  const lastWeek = moment().subtract(7, "days").startOf("day");
 
-  return (
-    <ContextContainer>
-      <ContextText>
-        {context.map(({ is_match, text }, i: number) => {
-          if (!is_match) {
-            return <span key={i}> {text}</span>;
-          }
-
-          return (
-            <strong key={i} style={{ color: color("brand") }}>
-              {" "}
-              {text}
-            </strong>
-          );
-        })}
-      </ContextText>
-    </ContextContainer>
-  );
-}
+  if (date.isSame(today, "day")) {
+    return `Today, ${date.format("h:mmA")}`;
+  } else if (date.isSame(yesterday, "day")) {
+    return `Yesterday, ${date.format("h:mmA")}`;
+  } else if (date.isAfter(lastWeek)) {
+    return `${date.format("dddd, h:mmA")}`;
+  } else {
+    return date.format("MMMM D, YYYY");
+  }
+};
 
 export function SearchResult({
   result,
-  compact = false,
   hasDescription = true,
-  onClick = undefined,
   isSelected = false,
 }: {
   result: WrappedResult;
@@ -118,76 +45,105 @@ export function SearchResult({
   onClick?: (result: WrappedResult) => void;
   isSelected?: boolean;
 }) {
-  const active = isItemActive(result);
-  const loading = isItemLoading(result);
+  const {
+    name,
+    description,
+    moderated_status,
+    last_edited_at,
+    last_editor_common_name,
+    creator_common_name,
+    created_at,
+  } = result;
 
-  // we want to remove link behavior if we have an onClick handler
-  const ResultContainer = onClick ? ResultButton : ResultLink;
+  const isActive = isItemActive(result);
+  const isLoading = isItemLoading(result);
 
-  const showXRayButton =
-    result.model === "indexed-entity" &&
-    result.id !== undefined &&
-    result.model_index_id !== null;
+  const getUserLabel = () => {
+    if (last_editor_common_name) {
+      return `Last edited by ${last_editor_common_name}`;
+    }
+
+    if (creator_common_name) {
+      return `Created by ${creator_common_name}`;
+    }
+
+    return null;
+  };
+
+  const dateLabel = last_edited_at ?? created_at;
 
   return (
-    <ResultContainer
-      data-is-selected={isSelected}
+    <SearchResultContainer
+      p="sm"
+      w="100%"
+      justify="flex-start"
+      align="center"
+      gap="0.5rem 0.875rem"
+      hasDescription={hasDescription && !!description}
+      isActive={isActive}
+      isLoading={isLoading}
       isSelected={isSelected}
-      active={active}
-      compact={compact}
-      to={!onClick ? result.getUrl() : ""}
-      onClick={onClick && active ? () => onClick(result) : undefined}
-      data-testid="search-result-item"
     >
-      <ResultInner>
-        <ResultLinkContent>
-          <ItemIcon item={result} type={result.model} active={active} />
-          <div>
-            <TitleWrapper>
-              <Title active={active} data-testid="search-result-item-name">
-                {result.name}
-              </Title>
-              <PLUGIN_MODERATION.ModerationStatusIcon
-                status={result.moderated_status}
-                size={12}
-              />
-            </TitleWrapper>
-            <Text data-testid="result-link-info-text">
-              <InfoText result={result} />
-            </Text>
-            {hasDescription && result.description && (
-              <Description>{result.description}</Description>
-            )}
-            <Score scores={result.scores} />
-          </div>
-          {loading && (
-            // SearchApp also uses `loading-spinner`, using a different test ID
-            // to not confuse unit tests waiting for loading-spinner to disappear
-            <ResultSpinner
-              data-testid="search-result-loading-spinner"
-              size={24}
-              borderWidth={3}
-            />
+      <UI.Center>
+        <ItemIcon item={result} type={result.model} active={isActive} />
+      </UI.Center>
+      <UI.Stack style={{ flex: 1 }} spacing="xs">
+        <TitleText
+          lh="unset"
+          size="md"
+          fw={700}
+          c={color(isActive ? "text.2" : "text.1")}
+        >
+          {name}
+          <ModerationIcon status={moderated_status} size={14} />
+        </TitleText>
+        <UI.Group spacing="xs">
+          <SearchResultParentLink result={result} />
+          {getUserLabel() && (
+            <>
+              <UI.Text lh="unset" size="sm" c="text.1">
+                •
+              </UI.Text>
+              <UI.Text lh="unset" size="sm" c="text.1">
+                {getUserLabel()}
+              </UI.Text>
+            </>
           )}
-        </ResultLinkContent>
-        {showXRayButton && (
-          <Button
-            onClick={(e: React.MouseEvent<HTMLButtonElement>) =>
-              e.stopPropagation()
-            }
-            variant="outline"
-            p="sm"
-          >
-            <Link
-              to={`/auto/dashboard/model_index/${result.model_index_id}/primary_key/${result.id}`}
-            >
-              <Icon name="bolt" />
-            </Link>
-          </Button>
-        )}
-      </ResultInner>
-      {compact || <Context context={result.context} />}
-    </ResultContainer>
+
+          <UI.Text lh="unset" size="sm" c="text.1">
+            •
+          </UI.Text>
+          <UI.Text lh="unset" size="sm" c="text.1">
+            {formatDate(dateLabel)}
+          </UI.Text>
+        </UI.Group>
+      </UI.Stack>
+      {/*{hasDescription && description && (*/}
+      {/*  <>*/}
+      {/*    <div></div>*/}
+      {/*    <UI.Group spacing="sm" noWrap>*/}
+      {/*      <Divider*/}
+      {/*        size="md"*/}
+      {/*        py="sm"*/}
+      {/*        color="focus.0"*/}
+      {/*        orientation="vertical"*/}
+      {/*        style={{ borderRadius: "4px" }}*/}
+      {/*      />*/}
+      {/*      <UI.Text size="sm" c="text.1">*/}
+      {/*        {description}*/}
+      {/*      </UI.Text>*/}
+      {/*    </UI.Group>*/}
+      {/*  </>*/}
+      {/*)}*/}
+
+      {isLoading && (
+        // SearchApp also uses `loading-spinner`, using a different test ID
+        // to not confuse unit tests waiting for loading-spinner to disappear
+        <UI.Center>
+          <UI.Loader data-testid="search-result-loading-spinner" size="md" />
+        </UI.Center>
+      )}
+    </SearchResultContainer>
   );
 }
 

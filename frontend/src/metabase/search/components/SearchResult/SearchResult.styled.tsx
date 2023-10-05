@@ -1,12 +1,18 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { color, lighten } from "metabase/lib/colors";
+import { PLUGIN_MODERATION } from "metabase/plugins";
+import { InfoText } from "metabase/search/components/InfoText";
 import { space } from "metabase/styled-components/theme";
 import Link from "metabase/core/components/Link";
 import Text from "metabase/components/type/Text";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import type { SearchModelType } from "metabase-types/api";
+
+import type { FlexProps, TextProps } from "metabase/ui";
+import { Flex, Text as MantineText } from "metabase/ui";
 
 type SearchEntity = any;
 
@@ -17,37 +23,34 @@ interface ResultStylesProps {
 }
 
 function getColorForIconWrapper({
-  item,
   active,
   type,
 }: {
-  item: SearchEntity;
   active: boolean;
   type: SearchModelType;
 }) {
   if (!active) {
     return color("text-medium");
-  } else if (item.collection_position) {
-    return color("saturated-yellow");
-  } else if (type === "collection") {
-    return lighten("brand", 0.35);
-  } else {
-    return color("brand");
   }
+  if (type === "collection") {
+    return lighten("brand", 0.35);
+  }
+  return color("brand");
 }
 
 export const IconWrapper = styled.div<{
-  item: SearchEntity;
   active: boolean;
   type: SearchModelType;
 }>`
+  border: ${({ theme }) => `1px solid ${theme.colors.border[0]}`};
+  border-radius: ${({ theme }) => theme.radius.sm};
   display: flex;
   align-items: center;
   justify-content: center;
   width: 32px;
   height: 32px;
-  color: ${getColorForIconWrapper};
-  margin-right: 10px;
+  color: ${({ active, type }) => getColorForIconWrapper({ active, type })};
+  //margin-right: 10px;
   flex-shrink: 0;
 `;
 
@@ -74,6 +77,7 @@ export const ResultButton = styled.button<ResultStylesProps>`
   text-align: left;
   cursor: pointer;
   width: 100%;
+
   &:hover {
     ${Title} {
       color: ${color("brand")};
@@ -165,4 +169,41 @@ export const ResultSpinner = styled(LoadingSpinner)`
   justify-content: flex-end;
   margin-left: ${space(1)};
   color: ${color("brand")};
+`;
+
+export const TitleText = styled(MantineText)<TextProps>``;
+
+export const SearchResultContainer = styled(Flex)<
+  FlexProps & {
+    hasDescription: boolean;
+    isActive: boolean;
+    isLoading: boolean;
+    isSelected: boolean;
+  }
+>`
+  transition: background-color 0.2s ease-in-out;
+  cursor: ${({isActive}) => (isActive ? "pointer" : "default")};
+
+  border-radius: ${({theme}) => theme.radius.sm};
+
+  &:hover {
+    background-color: ${({theme, isActive}) =>
+            isActive ? theme.colors.brand[0] : null};
+
+    ${TitleText} {
+      color: ${({theme, isActive, isSelected}) =>
+              isActive || isSelected ? theme.colors.brand[1] : null};
+    }
+  }
+`;
+
+export const SearchResultParentLink = styled(InfoText)`
+  & a {
+    font-weight: bold;
+  }
+`;
+
+export const ModerationIcon = styled(PLUGIN_MODERATION.ModerationStatusIcon)`
+  margin-bottom: -0.125rem;
+  margin-left: 0.25rem;
 `;
