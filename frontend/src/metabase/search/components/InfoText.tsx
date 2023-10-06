@@ -1,116 +1,181 @@
-import type TableType from "metabase-lib/metadata/Table";
-
+import { t } from "ttag";
+import {
+  useDatabaseQuery,
+  useSchemaListQuery,
+  useTableQuery,
+} from "metabase/common/hooks";
+import type { AnchorProps, TextProps } from "metabase/ui";
+import { Box } from "metabase/ui";
+import {
+  browseSchema,
+  tableRowsQuery,
+  collection as collectionUrl,
+  browseDatabase,
+} from "metabase/lib/urls";
 import type { Collection } from "metabase-types/api";
 
-import { Icon } from "metabase/core/components/Icon";
-import Database from "metabase/entities/databases";
-
-import Schema from "metabase/entities/schemas";
-import Table from "metabase/entities/tables";
-
-import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { AuthorityLevelIcon } from "metabase/search/components/CollectionBadge.styled";
 import { SearchResultLink } from "metabase/search/components/SearchResultLink/SearchResultLink";
 import type { WrappedResult } from "metabase/search/types";
-import { jt, t } from "ttag";
+import { Icon } from "metabase/core/components/Icon";
+import type TableType from "metabase-lib/metadata/Table";
 
-const getCollectionResultLink = (result: WrappedResult) => {
-  const collection = result.getCollection();
-  return (
-    <SearchResultLink
-      leftIcon={<AuthorityLevelIcon collection={collection} />}
-      to={Urls.collection(collection)}
-    >
-      {collection.name}
-    </SearchResultLink>
-  );
+type InfoTextData = {
+  link?: string | null;
+  icon?: JSX.Element;
+  label: string | null;
 };
 
-export function InfoText({ result }: { result: WrappedResult }) {
-  let textContent: string | string[] | JSX.Element | null;
+export function InfoText({
+  result,
+  ...textProps
+}: {
+  result: WrappedResult;
+  textProps?: TextProps | AnchorProps;
+}) {
+  const infoText: InfoTextData[] = useInfoText(result);
 
-  switch (result.model) {
-    case "card":
-    case "dataset":
-    case "indexed-entity":
-    default:
-      return getCollectionResultLink(result);
-    case "table":
-      return <TablePath result={result} />;
-    case "segment":
-    case "metric":
-      return <TableLink result={result} />;
-    case "collection":
-      textContent = getCollectionInfoText(result.collection);
-      break;
-    case "database":
-      textContent = t`Database`;
-      break;
-    case "action":
-      textContent = result.model_name;
-      break;
-  }
-
-  return <SearchResultLink>{textContent}</SearchResultLink>;
-}
-
-function getCollectionInfoText(collection: Partial<Collection>) {
-  if (
-    PLUGIN_COLLECTIONS.isRegularCollection(collection) ||
-    !collection.authority_level
-  ) {
-    return t`Collection`;
-  }
-  const level = PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[collection.authority_level];
-  return `${level.name} ${t`Collection`}`;
-}
-
-function TablePath({ result }: { result: WrappedResult }) {
   return (
     <>
-      {jt`${(
+      {infoText.map(({ link, icon, label }: InfoTextData, index: number) => (
         <>
-          <Database.Link
-            LinkComponent={SearchResultLink}
-            id={result.database_id}
-          />{" "}
-          {result.table_schema && (
-            <Schema.ListLoader
-              query={{ dbId: result.database_id }}
-              loadingAndErrorWrapper={false}
-            >
-              {({ list }: { list: typeof Schema[] }) =>
-                list?.length > 1 ? (
-                  <SearchResultLink
-                    leftIcon={<Icon name="chevronright" size={10} />}
-                    to={Urls.browseSchema({
-                      db: { id: result.database_id },
-                      schema_name: result.table_schema,
-                    } as TableType)}
-                  >
-                    {result.table_schema}
-                  </SearchResultLink>
-                ) : null
-              }
-            </Schema.ListLoader>
+          {index > 0 && (
+            <Box mt="xs" mx="xs" component="span">
+              <Icon name="chevronright" size={10} />
+            </Box>
           )}
+          <SearchResultLink
+            key={label}
+            to={link}
+            leftIcon={icon}
+            {...textProps}
+          >
+            {label}
+          </SearchResultLink>
         </>
-      )}`}
+      ))}
     </>
   );
 }
 
-function TableLink({ result }: { result: WrappedResult }) {
-  return (
-    <SearchResultLink
-      to={Urls.tableRowsQuery(result.database_id, result.table_id)}
-    >
-      <Table.Loader id={result.table_id} loadingAndErrorWrapper={false}>
-        {({ table }: { table: TableType }) =>
-          table ? <span>{table.display_name}</span> : null
-        }
-      </Table.Loader>
-    </SearchResultLink>
-  );
-}
+export const useInfoText = (result: WrappedResult): InfoTextData[] => {
+  let infoTextHook;
+
+  switch (result.model) {
+    case "table":
+      infoTextHook = useTablePath;
+      break;
+    case "segment":
+    case "metric":
+      infoTextHook = useTableLink;
+      break;
+    case "collection":
+      infoTextHook = useCollectionInfoText;
+      break;
+    case "database":
+      infoTextHook = useDatabaseInfoText;
+      break;
+    case "action":
+      infoTextHook = useActionInfoText;
+      break;
+    case "card":
+    case "dataset":
+    case "indexed-entity":
+    default:
+      infoTextHook = useCollectionResultLink;
+      break;
+  }
+
+  return infoTextHook(result);
+};
+
+const useActionInfoText = (result: WrappedResult): InfoTextData[] => {
+  return [
+    {
+      label: result.model_name,
+    },
+  ];
+};
+
+const useDatabaseInfoText = (): InfoTextData[] => {
+  return [
+    {
+      label: t`Database`,
+    },
+  ];
+};
+
+const useCollectionInfoText = (result: WrappedResult): InfoTextData[] => {
+  const collection: Partial<Collection> = result.getCollection();
+
+  if (
+    PLUGIN_COLLECTIONS.isRegularCollection(collection) ||
+    !collection.authority_level
+  ) {
+    return [
+      {
+        label: t`Collection`,
+      },
+    ];
+  }
+  const level = PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[collection.authority_level];
+  return [
+    {
+      label: `${level.name} ${t`Collection`}`,
+    },
+  ];
+};
+
+const useTablePath = (result: WrappedResult): InfoTextData[] => {
+  const { data: database } = useDatabaseQuery({
+    id: result.database_id,
+  });
+
+  const { data: schema = [] } = useSchemaListQuery({
+    query: {
+      dbId: result.database_id,
+    },
+  });
+
+  return [
+    {
+      link: database && browseDatabase(database),
+      label: database?.name ?? null,
+    },
+    {
+      link:
+        schema?.length > 1
+          ? browseSchema({
+              db: { id: result.database_id },
+              schema_name: result.table_schema,
+            } as TableType)
+          : null,
+      label: result.table_schema,
+    },
+  ];
+};
+
+const useTableLink = (result: WrappedResult): InfoTextData[] => {
+  const { data: table } = useTableQuery({
+    id: result.table_id,
+  });
+
+  return [
+    {
+      link: tableRowsQuery(result.database_id, result.table_id),
+      label: table?.display_name ?? null,
+    },
+  ];
+};
+
+const useCollectionResultLink = (result: WrappedResult): InfoTextData[] => {
+  const collection = result.getCollection();
+  return [
+    {
+      icon: <AuthorityLevelIcon collection={collection} />,
+      link: collectionUrl(collection),
+      label: collection.name,
+    },
+  ];
+};

@@ -9,10 +9,12 @@ import {
   createMockSearchResult,
   createMockTable,
   createMockDatabase,
+  createMockCollection,
 } from "metabase-types/api/mocks";
 import { getIcon, renderWithProviders, queryIcon } from "__support__/ui";
 
 import type { InitialSyncStatus } from "metabase-types/api";
+import { checkNotNull } from "metabase/core/utils/types";
 import type { WrappedResult } from "metabase/search/types";
 import { SearchResult } from "./SearchResult";
 
@@ -49,18 +51,20 @@ describe("SearchResult", () => {
     const result = createWrappedSearchResult({
       name: "My Folder of Goodies",
       model: "collection",
-      collection: {
+      collection: createMockCollection({
         id: 1,
         name: "This should not appear",
         authority_level: null,
-      },
+      }),
     });
 
     render(<SearchResult result={result} />);
 
     expect(screen.getByText(result.name)).toBeInTheDocument();
     expect(screen.getByText("Collection")).toBeInTheDocument();
-    expect(screen.queryByText(result.collection.name)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(checkNotNull(result.collection).name),
+    ).not.toBeInTheDocument();
     expect(getIcon("folder")).toBeInTheDocument();
   });
 });

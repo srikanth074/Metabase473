@@ -1,47 +1,34 @@
 import { Divider } from "@mantine/core";
+import { Fragment } from "react";
 import { color } from "metabase/lib/colors";
-import moment from "moment";
 import { isSyncCompleted } from "metabase/lib/syncing";
+import { InfoText } from "metabase/search/components/InfoText";
 
 import { ItemIcon } from "metabase/search/components/SearchResult/ItemIcon";
+import {
+  DescriptionContainer,
+  IconContainer,
+  InfoTextContainer,
+  LoadingContainer,
+  ModerationIcon,
+  SearchResultContainer,
+  TitleContainer,
+} from "metabase/search/components/SearchResult/SearchResult.styled";
+import { formatDate } from "metabase/search/components/SearchResult/utils/format-date";
+import { getUserLabel } from "metabase/search/components/SearchResult/utils/get-user-label";
 
 import type { WrappedResult } from "metabase/search/types";
 import * as UI from "metabase/ui";
-import {
-  ModerationIcon,
-  SearchResultContainer,
-  SearchResultParentLink,
-  TitleText,
-} from "./SearchResult.styled";
-
-const formatDate = (inputDate?: string | null) => {
-  if (!inputDate) {
-    return null;
-  }
-  const date = moment(inputDate);
-  const today = moment().startOf("day");
-  const yesterday = moment().subtract(1, "days").startOf("day");
-  const lastWeek = moment().subtract(7, "days").startOf("day");
-
-  if (date.isSame(today, "day")) {
-    return `Today, ${date.format("h:mmA")}`;
-  } else if (date.isSame(yesterday, "day")) {
-    return `Yesterday, ${date.format("h:mmA")}`;
-  } else if (date.isAfter(lastWeek)) {
-    return `${date.format("dddd, h:mmA")}`;
-  } else {
-    return date.format("MMMM D, YYYY");
-  }
-};
 
 export function SearchResult({
   result,
-  hasDescription = true,
+  compact = false,
+  showDescription = true,
   isSelected = false,
 }: {
   result: WrappedResult;
   compact?: boolean;
-  hasDescription?: boolean;
+  showDescription?: boolean;
   onClick?: (result: WrappedResult) => void;
   isSelected?: boolean;
 }) {
@@ -50,118 +37,90 @@ export function SearchResult({
     description,
     moderated_status,
     last_edited_at,
-    last_editor_common_name,
-    creator_common_name,
     created_at,
   } = result;
+
+  const shouldDisplayDescription = showDescription && !!description;
 
   const isActive = isItemActive(result);
   const isLoading = isItemLoading(result);
 
-  const getUserLabel = () => {
-    if (last_editor_common_name) {
-      return `Last edited by ${last_editor_common_name}`;
-    }
+  const userLabel = getUserLabel(result);
+  const dateLabel = formatDate(last_edited_at ?? created_at);
 
-    if (creator_common_name) {
-      return `Created by ${creator_common_name}`;
-    }
+  const descriptionContainer = shouldDisplayDescription ? (
+    <DescriptionContainer spacing="sm" mt="sm" noWrap>
+      <Divider size="md" py="sm" color="focus.0" orientation="vertical" />
+      <UI.Text size="sm" c="text.1" lineClamp={3}>
+        {description}
+      </UI.Text>
+    </DescriptionContainer>
+  ) : null;
 
-    return null;
-  };
+  const loadingContainer = isLoading ? (
+    <LoadingContainer p="lg">
+      <UI.Loader data-testid="search-result-loading-spinner" size="md" />
+    </LoadingContainer>
+  ) : null;
 
-  const dateLabel = last_edited_at ?? created_at;
+  const infoContainer = [
+    <InfoText key="info-text" result={result} />,
+    userLabel,
+    compact ? dateLabel : null,
+  ]
+    .filter(Boolean)
+    .map((item, index) => (
+      <Fragment key={index}>
+        {index > 0 && (
+          <UI.Text span mx="xs" c="text.1">
+            •
+          </UI.Text>
+        )}
+        {item}
+      </Fragment>
+    ));
 
   return (
     <SearchResultContainer
       p="sm"
       w="100%"
-      justify="flex-start"
-      align="center"
-      gap="0.5rem 0.875rem"
-      hasDescription={hasDescription && !!description}
+      showDescription={shouldDisplayDescription}
       isActive={isActive}
       isLoading={isLoading}
       isSelected={isSelected}
     >
-      <UI.Center>
+      <IconContainer>
         <ItemIcon item={result} type={result.model} active={isActive} />
-      </UI.Center>
-      <UI.Stack style={{ flex: 1 }} spacing="xs">
-        <TitleText
-          lh="unset"
-          size="md"
-          fw={700}
-          c={color(isActive ? "text.2" : "text.1")}
-        >
-          {name}
-          <ModerationIcon status={moderated_status} size={14} />
-        </TitleText>
-        <UI.Group spacing="xs">
-          <SearchResultParentLink result={result} />
-          {getUserLabel() && (
-            <>
-              <UI.Text lh="unset" size="sm" c="text.1">
-                •
-              </UI.Text>
-              <UI.Text lh="unset" size="sm" c="text.1">
-                {getUserLabel()}
-              </UI.Text>
-            </>
-          )}
-
-          <UI.Text lh="unset" size="sm" c="text.1">
-            •
-          </UI.Text>
-          <UI.Text lh="unset" size="sm" c="text.1">
-            {formatDate(dateLabel)}
-          </UI.Text>
-        </UI.Group>
-      </UI.Stack>
-      {/*{hasDescription && description && (*/}
-      {/*  <>*/}
-      {/*    <div></div>*/}
-      {/*    <UI.Group spacing="sm" noWrap>*/}
-      {/*      <Divider*/}
-      {/*        size="md"*/}
-      {/*        py="sm"*/}
-      {/*        color="focus.0"*/}
-      {/*        orientation="vertical"*/}
-      {/*        style={{ borderRadius: "4px" }}*/}
-      {/*      />*/}
-      {/*      <UI.Text size="sm" c="text.1">*/}
-      {/*        {description}*/}
-      {/*      </UI.Text>*/}
-      {/*    </UI.Group>*/}
-      {/*  </>*/}
-      {/*)}*/}
-
-      {isLoading && (
-        // SearchApp also uses `loading-spinner`, using a different test ID
-        // to not confuse unit tests waiting for loading-spinner to disappear
-        <UI.Center>
-          <UI.Loader data-testid="search-result-loading-spinner" size="md" />
-        </UI.Center>
-      )}
+      </IconContainer>
+      <TitleContainer
+        lh="unset"
+        size="md"
+        fw={700}
+        c={color(isActive ? "text.2" : "text.1")}
+        truncate
+      >
+        {name}
+        <UI.Box pos="relative" top="0.125rem" component="span">
+          <ModerationIcon status={moderated_status} size={16} />
+        </UI.Box>
+      </TitleContainer>
+      <InfoTextContainer fz={compact ? "sm" : "md"} spacing="xs">{infoContainer}</InfoTextContainer>
+      {descriptionContainer}
+      {loadingContainer}
     </SearchResultContainer>
   );
 }
 
 const isItemActive = (result: WrappedResult) => {
-  switch (result.model) {
-    case "table":
-      return isSyncCompleted(result);
-    default:
-      return true;
+  if (result.model === "table") {
+    return isSyncCompleted(result);
   }
+  return true;
 };
 
 const isItemLoading = (result: WrappedResult) => {
-  switch (result.model) {
-    case "database":
-    case "table":
-      return !isSyncCompleted(result);
-    default:
-      return false;
+  if (result.model === "database" || result.model === "table") {
+    return !isSyncCompleted(result);
   }
+  return false;
 };

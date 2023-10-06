@@ -1,11 +1,11 @@
 // I think it's very likely that this is a dead codepath: RL 2023-06-21
-import {color} from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import {
   ContextContainer,
   ContextText,
-} from "metabase/search/components/SearchResult/SearchResult.styled";
+} from "metabase/search/components/SearchResult/Context.styled";
 
-export function Context({context}: { context: any[] }) {
+export function Context({ context }: { context: any[] }) {
   if (!context) {
     return null;
   }
@@ -13,13 +13,13 @@ export function Context({context}: { context: any[] }) {
   return (
     <ContextContainer>
       <ContextText>
-        {context.map(({is_match, text}, i: number) => {
+        {context.map(({ is_match, text }, i: number) => {
           if (!is_match) {
             return <span key={i}> {text}</span>;
           }
 
           return (
-            <strong key={i} style={{color: color("brand")}}>
+            <strong key={i} style={{ color: color("brand") }}>
               {" "}
               {text}
             </strong>

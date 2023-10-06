@@ -1,9 +1,9 @@
-import type {SearchModelType} from "metabase-types/api";
-import {CollectionIcon} from "metabase/search/components/SearchResult/CollectionIcon";
-import {DefaultIcon} from "metabase/search/components/SearchResult/DefaultIcon";
-import {IconWrapper} from "metabase/search/components/SearchResult/SearchResult.styled";
-import {TableIcon} from "metabase/search/components/SearchResult/TableIcon";
-import type {WrappedResult} from "metabase/search/types";
+import type { SearchModelType } from "metabase-types/api";
+import { CollectionIcon } from "metabase/search/components/SearchResult/CollectionIcon";
+import { DefaultIcon } from "metabase/search/components/SearchResult/DefaultIcon";
+import { IconWrapper } from "metabase/search/components/SearchResult/ItemIcon.styled";
+import { TableIcon } from "metabase/search/components/SearchResult/TableIcon";
+import type { WrappedResult } from "metabase/search/types";
 
 const ModelIconComponentMap = {
   table: TableIcon,
@@ -11,10 +11,10 @@ const ModelIconComponentMap = {
 };
 
 export function ItemIcon({
-                           item,
-                           type,
-                           active,
-                         }: {
+  item,
+  type,
+  active,
+}: {
   item: WrappedResult;
   type: SearchModelType;
   active: boolean;
@@ -26,7 +26,7 @@ export function ItemIcon({
 
   return (
     <IconWrapper type={type} active={active}>
-      <IconComponent item={item}/>
+      <IconComponent item={item} />
     </IconWrapper>
   );
 }

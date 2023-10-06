@@ -1,6 +1,6 @@
 import { ResultLink } from "metabase/search/components/SearchResultLink/SearchResultLink.styled";
 import type { TextProps, AnchorProps } from "metabase/ui";
-import { Anchor, Group, Text } from "metabase/ui";
+import { Anchor, Box, Text } from "metabase/ui";
 
 export const SearchResultLink = ({
   children,
@@ -10,17 +10,24 @@ export const SearchResultLink = ({
 }: {
   children: JSX.Element | string | null;
   leftIcon?: JSX.Element | null;
-  to?: string;
+  to?: string | null;
   textProps?: TextProps | AnchorProps;
 }) => {
-  const Component = to ? Anchor : Text;
+  const componentProps = to ? { as: Anchor, to } : { as: Text };
 
   return (
-    <Group align="center">
-      {leftIcon}
-      <ResultLink fz="sm" lh="unset" as={Component} href={to} {...textProps}>
-        {children}
-      </ResultLink>
-    </Group>
+    <ResultLink
+      span
+      td={to ? "underline" : "none"}
+      c="text.1"
+      lh="unset"
+      {...componentProps}
+      {...textProps}
+    >
+      <Box component="span" pos="relative" top="0.15rem">
+        {leftIcon}
+      </Box>
+      {children}
+    </ResultLink>
   );
 };

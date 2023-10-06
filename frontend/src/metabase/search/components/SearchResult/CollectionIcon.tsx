@@ -5,7 +5,8 @@ import type { WrappedResult } from "metabase/search/types";
 
 export function CollectionIcon({ item }: { item: WrappedResult }) {
   const iconProps = { ...item.getIcon() };
-  const isRegular = PLUGIN_COLLECTIONS.isRegularCollection(item.collection);
+  const isRegular =
+    item.collection && PLUGIN_COLLECTIONS.isRegularCollection(item.collection);
   if (isRegular) {
     iconProps.size = DEFAULT_ICON_SIZE;
   } else {

@@ -24,5 +24,5 @@ export const AuthorityLevelIcon = styled(CollectionAuthorityLevelIcon)`
 `;
 
 AuthorityLevelIcon.defaultProps = {
-  size: 13,
+  size: 16,
 };

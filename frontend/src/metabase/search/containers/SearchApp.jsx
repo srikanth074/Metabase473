@@ -8,7 +8,7 @@ import { push } from "react-router-redux";
 import Search from "metabase/entities/search";
 
 import EmptyState from "metabase/components/EmptyState";
-import { Box, Text, Group, Paper, Stack } from "metabase/ui";
+import { Box, Group, Paper, Text } from "metabase/ui";
 
 import NoResults from "assets/img/no_results.svg";
 import PaginationControls from "metabase/components/PaginationControls";
@@ -18,16 +18,16 @@ import {
   getSearchTextFromLocation,
 } from "metabase/search/utils";
 import { PAGE_SIZE } from "metabase/search/containers/constants";
-import { SearchResult } from "metabase/search/components/SearchResult";
 import { SearchFilterKeys } from "metabase/search/constants";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import { useDispatch } from "metabase/lib/redux";
 import {
-  SearchControls,
   SearchBody,
+  SearchControls,
   SearchMain,
   SearchResultContainer,
 } from "metabase/search/containers/SearchApp.styled";
+import { SearchResultSection } from "metabase/search/containers/SearchResultSection";
 
 function SearchApp({ location }) {
   const dispatch = useDispatch();
@@ -130,18 +130,7 @@ SearchApp.propTypes = {
 
 export default SearchApp;
 
-const SearchResultSection = ({ items, totalResults }) => (
-  <Paper p="md">
-    <Text mb="sm" ml="xs" tt="uppercase" c="text.1" fw="700">{t`${totalResults} results`}</Text>
-    <Stack spacing="xs" justify="center" align="center">
-      {items.map(item => (
-        <SearchResult key={item.id} result={item} />
-      ))}
-    </Stack>
-  </Paper>
-);
-
 SearchResultSection.propTypes = {
   items: PropTypes.array,
-  totalResults: PropTypes.number
+  totalResults: PropTypes.number,
 };
