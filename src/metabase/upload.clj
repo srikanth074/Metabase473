@@ -207,7 +207,8 @@
   [driver type-or-type-map]
   (if (map? type-or-type-map)
     (let [{the-type :type opts :opts} type-or-type-map]
-      (vec (cons (driver/upload-type->database-type driver the-type) opts)))
+      (into [(driver/upload-type->database-type driver the-type)]
+            opts))
     [(driver/upload-type->database-type driver type-or-type-map)]))
 
 (defn- rows->schema
@@ -345,6 +346,9 @@
     - ::datetime
     - ::pk
 
+  The type may also be a map with keys `:type` (as above), `:opts` (additional options to give HoneySQL for the column
+  creation), and `:exclude-in-insert?` (`true` if the column does not have corresponding values to insert).
+
   A column that is completely blank is assumed to be of type ::text."
   [driver csv-file]
   (with-open [reader (bom/bom-reader csv-file)]
@@ -355,20 +359,20 @@
   "Loads a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
   [driver db-id table-name ^File csv-file]
-  (let [col->upload-type               (detect-schema driver csv-file)
-        col->column-spec               (update-vals col->upload-type (partial upload-type->column-spec driver))
-        columns-to-insert->upload-type (->> col->upload-type
-                                            (filter (fn [[_col-name upload-type]]
-                                                      (not (:exclude-in-insert? upload-type))))
-                                            (ordered-map/ordered-map))
-        column-names                   (keys columns-to-insert->upload-type)]
+  (let [col->upload-spec           (detect-schema driver csv-file)
+        col->column-spec           (update-vals col->upload-spec (partial upload-type->column-spec driver))
+        col-to-insert->upload-type (->> col->upload-spec
+                                        (filter (fn [[_col-name upload-type]]
+                                                  (not (:exclude-in-insert? upload-type))))
+                                        (ordered-map/ordered-map))
+        col-names                  (keys col-to-insert->upload-type)]
     (driver/create-table! driver db-id table-name col->column-spec)
     (try
       (with-open [reader (io/reader csv-file)]
-        (let [rows (parsed-rows columns-to-insert->upload-type reader)]
-          (driver/insert-into! driver db-id table-name column-names rows)
+        (let [rows (parsed-rows col-to-insert->upload-type reader)]
+          (driver/insert-into! driver db-id table-name col-names rows)
           {:num-rows    (count rows)
-           :num-columns (count column-names)
+           :num-columns (count col-names)
            :size-mb     (/ (.length csv-file) 1048576.0)}))
       (catch Throwable e
         (driver/drop-table! driver db-id table-name)
